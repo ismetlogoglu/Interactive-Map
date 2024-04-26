@@ -1,0 +1,261 @@
+---
+title: "Stat-295 Project"
+author: "ismet Loğoğlu"
+date: "2024-04-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Stat-295 Homework-1
+
+#### Ismet selman logoglu - 2507515
+
+## [Question 1]{.underline}
+
+**i.** Read the data. Change the name of the data for college_score.csv and print the lines 10 through 60.
+
+```{r}
+# $ cd "C:\Users\ismet\Desktop\Math250"
+
+# $ wget https://raw.githubusercontent.com/dhavalpotdar/College-Scorecard-Data-Analysis/master/MERGED_2017_2018_cleaned.csv
+
+# $ mv MERGED_2017_2018_cleaned.csv college_score.csv
+
+# $ head -n 60 college_score.csv | tail -n +10
+```
+
+**ii.** Create a sub-sample of the data set with the following condition: control = Public and city = Montgomery. Add this sub-sample to subsample.csv file.
+
+```{r}
+# $ awk -F, '$8 == "Public" && $4 == "Montgomery"' college_score.csv > subsample.csv
+```
+
+**iii.** Obtain the frequencies of each cities.
+
+```{r}
+# $ awk -F, '{print $4}' college_score.csv | sort | uniq -c
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
+libraries <- c("ggplot2","sf","rworldmap","tidyverse","magrittr",
+                      "leaflet", "dplyr", "rvest", "xml2","rvest",
+                      "maps","mapdata","RgoogleMaps","lubridate","rnaturalearth","dplyr","rnaturalearthdata","RColorBrewer","httr")
+lapply(libraries, require, character.only = TRUE)
+```
+
+## [Question 2]{.underline}
+
+**i.** Read the data set provided in the above URL and assign the name as chocolate. Print the first 6 rows. Examine the structure of the data and comment shortly.
+
+```{r}
+url <- "https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-01-18/chocolate.csv"
+
+chocolate <- read.csv(url)
+
+head(chocolate, 6)
+#str(chocolate) I was just used for checking
+
+library(dplyr)
+
+
+```
+
+Overall, this data frame contains information about various chocolate bars, including their origin, ingredients, and ratings. This information could be used for various purposes, such as analyzing trends in chocolate production or identifying the best chocolate bars in terms of taste and quality.
+
+**ii.** Using the some specific command with **pipe-operator,** convert all the characters in your data set into factors.
+
+```{r}
+chocolate <- chocolate %>%
+  mutate(across(where(is.character), as.factor))
+
+
+```
+
+**iii.** Obtain some statistics such as mean, standard deviation, median and range of rating values with respect to different company locations. Print only the first 10 observations. Comment some specific statistics shortly from the output.
+
+```{r}
+smmry <- chocolate %>%
+  group_by(company_location) %>%
+  summarise(
+    mean_rating = mean(rating, na.rm = TRUE),
+    sd_rating = sd(rating, na.rm = TRUE),
+    median_rating = median(rating, na.rm = TRUE),
+    range_rating = max(rating, na.rm = TRUE) - min(rating, na.rm = TRUE)
+  )
+head(smmry, 10)
+
+```
+
+These statistics suggest that the mean rating of chocolate bars varies by location, with some locations having higher mean ratings than others. The standard deviation and median rating also vary by location, indicating that the distribution of ratings may differ across locations. The range of ratings provides information about the variability of ratings within each location.
+
+**iv.** Find the chocolates that its review date is equal to 2020 and country of bean origin is equal to Colombia.
+
+```{r}
+
+filtered <- filter(chocolate, review_date == 2020 & country_of_bean_origin == "Colombia")
+filtered
+```
+
+**v.** Take the mean of chocolate rating and cocoa percent according to the company location.
+
+```{r}
+mean_loc <- chocolate %>%
+  group_by(company_location) %>%
+  summarise(
+    mean_rating = mean(rating, na.rm = T),
+    mean_cocoa_percentage = mean(as.numeric(gsub("%", "", cocoa_percent)), na.rm = T)
+  )
+
+print(mean_loc, n = 15)
+```
+
+**vi.** Select company manufacturer, company location and country of bean origin **shortly**. Print the first 10 rows of the data frame. (Hint: Please check the column names)
+
+```{r}
+
+selection <- chocolate[, c("company_manufacturer", "company_location", "country_of_bean_origin")]
+
+head(selection, 10)
+```
+
+**vii.** Filter that company location in Switzerland whose rating between 3.25 and 3.5. Take the five observations.
+
+```{r}
+filtered2 <- chocolate[chocolate$company_location == "Switzerland" & chocolate$rating >= 3.25 & 
+                         chocolate$rating <= 3.5, ]
+filtered2 <- head(filtered2, 5)
+
+filtered2
+
+```
+
+**viii.** What is the mean of the rating column for each company locations find and order by descending.
+
+```{r}
+mean_rating_location <- chocolate %>%
+  group_by(company_location) %>%
+  summarise(mean_rating = mean(rating, na.rm = TRUE)) %>%
+  arrange(desc(mean_rating))
+mean_rating_location
+```
+
+**ix. C**ount that how many observations are assigned Bonnat for each country of bean origin?
+
+```{r}
+count_bonnat <- chocolate %>%
+  filter(company_manufacturer == "Bonnat") %>%
+  group_by(country_of_bean_origin) %>%
+  count()
+count_bonnat
+```
+
+**v.** Using **`mutate()`** function create a new column called Rating Percantage, which is percentage version of the rating column. For instance if the rating is 4, then percentage of it is 100. If the rating is 3.5, their percentage is 87,5. After that create another new column called Class, if Rating Percantage is less than 25 then called Class as Low, if it’s between 25 and 50 called as Medium, if it’s between 50 and 87,5 called as Tasty and if it’s bigger than 87,5 called as Excellent.
+
+```{r}
+chocolate_new <- chocolate %>%
+  mutate(Rating_Percentage = rating * 25)
+
+chocolate_new <- chocolate_new %>%
+  mutate(Class = case_when(
+    Rating_Percentage < 25 ~ "Low",
+    Rating_Percentage >= 25 & Rating_Percentage < 50 ~ "Medium",
+    Rating_Percentage >= 50 & Rating_Percentage < 75 ~ "Tasty",
+    Rating_Percentage >= 75 ~ "Excellent",
+    TRUE ~ "Unknown"
+  ))
+head(chocolate_new)
+
+```
+
+## [Question 3]{.underline}
+
+In this question *National Morbidity and Mortality Air Pollution Study* (NMMAPS) data sets will be used. Here is the data set [link](https://www.cedricscherer.com/data/chicago-nmmaps-custom.csv).
+
+**i.** Read data set correctly from the link and called them as nmmaps.Then, examine the relationship between date and temp based on the year. Interpret shortly your plots.
+
+(Hint: You should use facet_wrap)
+
+```{r}
+nmmaps <- read.csv("https://www.cedricscherer.com/data/chicago-nmmaps-custom.csv")
+str(nmmaps)
+
+nmmaps$year <- as.factor(nmmaps$year)
+
+ggplot(nmmaps, aes(x = date, y = temp, color = season)) +
+  geom_point() +
+  facet_wrap(~year) +
+  labs(x = "Date", y = "Temperature", color = "Season") +
+  theme_minimal()
+
+```
+
+Based on the plot, there is a clear seasonal pattern in the temperature data, with higher temperatures in the summer months and lower temperatures in the winter months. The temperature also varies within each year, with some years having higher or lower temperatures than others. The plot also shows that there are some missing values in the temperature data, which are represented as gaps in the plot. Overall, the plot provides a clear visualization of the relationship between date, temperature, and year in the nmmaps dataset.
+
+**ii.** Examine the relationship between date, temp and season. For this question, first specify the factor for season (There are 4 different levels.) Then using geom_point function, examine the relationship and interpret shortly.
+
+```{r}
+
+nmmaps$season <- factor(nmmaps$season, levels = c("Winter", "Spring", "Summer", "Fall"))
+
+ggplot(nmmaps, aes(x = date, y = temp, color = season)) +
+  geom_point() +
+  labs(x = "Date", y = "Temperature", color = "Season") +
+  theme_minimal()
+```
+
+This plot provides a clear visualization of the relationship between date, temperature, and season in the nmmaps dataset. It shows that temperatures generally increase from winter to summer within each year. Additionally, the color legend allows us to quickly identify trends specific to each season.
+
+**iii.** What is the relationship between temperature and dewpoint, find the correlation then, plot them.Make some comment on your plot.
+
+```{r}
+cor(nmmaps$temp, nmmaps$dewpoint)
+
+
+ggplot(nmmaps, aes(x = temp, y = dewpoint)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  labs(x = "Temperature", y = "Dewpoint") +
+  theme_minimal()
+
+```
+
+The strong positive correlation between temperature and dewpoint can be explained by the fact that dewpoint is a measure of the amount of moisture in the air, and temperature affects the ability of the air to hold moisture. As temperature increase, the air becomes less able to hold moisture, causing the dewpoint to increase. Conversely, as temperature increases, the air becomes more able to hold moisture, causing the dewpoint to increase.
+
+## Question 4
+
+```{r}
+
+
+my_url <- "https://www.latlong.net/category/cathedrals-209-54.html"
+
+ne <- GET(my_url)
+
+html_com <- content(ne, "text")
+html_cathedral <- read_html(html_com)
+my_tables <- html_cathedral |>
+  html_nodes("table") |> 
+  html_table()
+
+
+
+cathedrals <- do.call(rbind, my_tables)
+cathedrals <- as.data.frame(cathedrals)
+
+str(cathedrals)
+
+
+my_map <- leaflet(data = cathedrals) %>%
+  addTiles() %>%
+  setView(lng = -3.70359, lat = 40.41677, zoom = 6)
+
+
+my_map <- my_map %>%
+  addCircleMarkers(lng = ~Longitude, lat = ~Latitude,
+                   radius = 5, color = "red",
+                   popup = ~ cathedrals$`Place Name` )
+
+my_map
+```
